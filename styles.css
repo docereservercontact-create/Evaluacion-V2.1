@@ -1,13 +1,10 @@
-body {
-    font-family: Arial;
-    margin: 0;
-}
+body { margin:0; font-family:Arial; }
 
 .center {
     display:flex;
     flex-direction:column;
-    justify-content:center;
     align-items:center;
+    justify-content:center;
     height:100vh;
     background:#0a3d91;
     color:white;
@@ -16,8 +13,10 @@ body {
 input, button {
     margin:10px;
     padding:10px;
+    cursor:pointer;
 }
 
+/* EXAMEN */
 .exam {
     display:flex;
     height:100vh;
@@ -27,14 +26,30 @@ input, button {
     width:50%;
     background:#0a3d91;
     color:white;
-    padding:40px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    font-size:30px;
+    padding:20px;
 }
 
 .right {
     width:50%;
     padding:40px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
 }
 
-.correct { background:#c8f7c5; }
-.incorrect { background:#f7c5c5; }
-.unanswered { background:#e0e0e0; }
+.option {
+    padding:15px;
+    margin:10px 0;
+    border:2px solid #0a3d91;
+    background:white;
+}
+
+.option.selected {
+    background:#0a3d91;
+    color:white;
+}
