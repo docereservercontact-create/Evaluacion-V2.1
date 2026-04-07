@@ -2,82 +2,40 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Examen PRO</title>
+<title>Examen PRO + Panel</title>
 
-<!-- LIBRERÍA PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-* { margin:0; padding:0; box-sizing:border-box; font-family:Arial; }
+body { font-family:Arial; margin:0; }
 
 /* LOGIN */
 .login {
     display:flex;
     flex-direction:column;
-    justify-content:center;
     align-items:center;
+    justify-content:center;
     height:100vh;
     background:#0a3d91;
     color:white;
 }
 
-.login input {
-    margin:10px;
-    padding:10px;
-    width:250px;
-}
+input { margin:10px; padding:10px; }
 
-.login button {
-    padding:10px 20px;
-    cursor:pointer;
-}
+button { padding:10px; margin:5px; cursor:pointer; }
 
 /* EXAMEN */
 .exam { display:flex; height:100vh; }
-
-.left {
-    width:50%;
-    background:#0a3d91;
-    color:white;
-    display:flex;
-    align-items:center;
-    padding:40px;
-}
-
-.right {
-    width:50%;
-    padding:40px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-between;
-}
-
-.timer { text-align:right; font-size:28px; }
-
-.answers {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-}
-
-.btn {
-    padding:15px;
-    cursor:pointer;
-}
-
-.selected { background:green; color:white; }
-
-.next {
-    padding:10px;
-    background:#0a3d91;
-    color:white;
-    cursor:pointer;
-}
+.left { width:50%; background:#0a3d91; color:white; padding:40px; }
+.right { width:50%; padding:40px; display:flex; flex-direction:column; justify-content:space-between; }
 
 /* RESULTADOS */
 .correct { background:#c8f7c5; }
 .incorrect { background:#f7c5c5; }
 .unanswered { background:#e0e0e0; }
+
+/* PANEL */
+.panel { padding:30px; }
 </style>
 </head>
 
@@ -87,18 +45,16 @@
     <h1>EXAMEN DE PRUEBA 1</h1>
     <input id="name" placeholder="Nombre completo">
     <input id="account" placeholder="No. Cuenta">
-    <button onclick="startExam()">Iniciar</button>
+    <button onclick="startExam()">Iniciar Examen</button>
+    <button onclick="openPanel()">Panel Maestro</button>
 </div>
 
 <div class="exam" id="exam" style="display:none;">
-    <div class="left">
-        <h2 id="question"></h2>
-    </div>
-
+    <div class="left"><h2 id="question"></h2></div>
     <div class="right">
-        <div class="timer" id="timer"></div>
-        <div class="answers" id="answers"></div>
-        <button class="next" onclick="nextQuestion()">Siguiente</button>
+        <div id="timer"></div>
+        <div id="answers"></div>
+        <button onclick="nextQuestion()">Siguiente</button>
     </div>
 </div>
 
@@ -113,7 +69,6 @@ const questions = [
 
 let name="", account="";
 let current=0, interval;
-
 let totalTime = questions.length*65;
 let time = totalTime;
 
@@ -121,26 +76,23 @@ let answersUser = new Array(questions.length).fill(null);
 let timePerQuestion = new Array(questions.length).fill(0);
 let lastTime = totalTime;
 
-/* 🚫 BLOQUEO COPIAR */
+/* BLOQUEOS */
 document.addEventListener("keydown", e=>{
-    if(e.ctrlKey && (e.key==="c" || e.key==="x" || e.key==="v")){
-        e.preventDefault();
-    }
+    if(e.ctrlKey && ["c","v","x"].includes(e.key)) e.preventDefault();
 });
 
-/* 🚫 CAMBIO DE PESTAÑA */
 document.addEventListener("visibilitychange", ()=>{
     if(document.hidden){
-        alert("Saliste del examen. Se finalizará.");
+        alert("Saliste del examen");
         endExam();
     }
 });
 
 function startExam(){
-    name=document.getElementById("name").value;
+    name.value ? name=name.value : name=document.getElementById("name").value;
     account=document.getElementById("account").value;
 
-    if(!name||!account) return alert("Completa datos");
+    if(!name || !account) return alert("Completa datos");
 
     login.style.display="none";
     exam.style.display="flex";
@@ -152,18 +104,13 @@ function startExam(){
 function loadQuestion(){
     let q=questions[current];
     question.textContent=q.question;
-    answers.innerHTML="";
 
+    answers.innerHTML="";
     q.options.forEach((opt,i)=>{
         let btn=document.createElement("button");
-        btn.textContent=String.fromCharCode(65+i)+") "+opt;
-        btn.className="btn";
-
-        if(answersUser[current]===i) btn.classList.add("selected");
+        btn.textContent=opt;
 
         btn.onclick=()=>{
-            document.querySelectorAll(".btn").forEach(b=>b.classList.remove("selected"));
-            btn.classList.add("selected");
             answersUser[current]=i;
         };
 
@@ -172,15 +119,8 @@ function loadQuestion(){
 }
 
 function updateTimer(){
-    let m=Math.floor(time/60);
-    let s=time%60;
-    timer.textContent=`${m}:${s}`;
-
-    if(time<=0){
-        clearInterval(interval);
-        endExam();
-    }
-
+    timer.textContent=time+"s";
+    if(time<=0) endExam();
     time--;
 }
 
@@ -191,77 +131,82 @@ function nextQuestion(){
     if(current<questions.length-1){
         current++;
         loadQuestion();
-    } else {
-        endExam();
-    }
+    } else endExam();
 }
 
 function endExam(){
     clearInterval(interval);
 
     let correct=0;
-    let rowsHTML="";
-    let rowsPDF=[];
 
     questions.forEach((q,i)=>{
-        let t=timePerQuestion[i];
-        let ans = answersUser[i];
-
-        let ansText = ans!==null ? q.options[ans] : "Sin responder";
-
-        let status="";
-        if(ans===null) status="unanswered";
-        else if(ans===q.correct){ status="correct"; correct++; }
-        else status="incorrect";
-
-        rowsHTML+=`
-        <tr class="${status}">
-            <td>${i+1}</td>
-            <td>${q.question}</td>
-            <td>${ansText}</td>
-            <td>${t}s</td>
-        </tr>`;
-
-        rowsPDF.push(`${i+1}. ${q.question} | Resp: ${ansText} | Tiempo: ${t}s`);
+        if(answersUser[i]===q.correct) correct++;
     });
 
     let totalUsed = totalTime-time;
 
-    document.body.innerHTML=`
-    <div style="padding:30px;">
-        <h1>Resultados</h1>
-        <p><b>${name}</b> - ${account}</p>
-        <p>Calificación: ${correct}/${questions.length}</p>
-        <p>Tiempo total: ${totalUsed}s</p>
+    let result = {
+        name,
+        account,
+        score: correct+"/"+questions.length,
+        time: totalUsed,
+        detail: answersUser
+    };
 
-        <button onclick="downloadPDF()">Descargar PDF</button>
+    let data = JSON.parse(localStorage.getItem("results") || "[]");
+    data.push(result);
+    localStorage.setItem("results", JSON.stringify(data));
 
-        <table border="1">
-            <tr><th>#</th><th>Pregunta</th><th>Respuesta</th><th>Tiempo</th></tr>
-            ${rowsHTML}
-        </table>
-    </div>`;
-
-    window.examData = {correct, rowsPDF, totalUsed};
+    alert("Examen terminado. Guardado en panel.");
+    location.reload();
 }
 
-/* 📄 PDF */
-function downloadPDF(){
-    let doc=new jsPDF();
+/* PANEL */
+function openPanel(){
+    let data = JSON.parse(localStorage.getItem("results") || "[]");
 
-    doc.text("Resultados del Examen",10,10);
-    doc.text(`Alumno: ${name}`,10,20);
-    doc.text(`Cuenta: ${account}`,10,30);
-    doc.text(`Calificación: ${examData.correct}/${questions.length}`,10,40);
-    doc.text(`Tiempo: ${examData.totalUsed}s`,10,50);
-
-    let y=60;
-    examData.rowsPDF.forEach(r=>{
-        doc.text(r,10,y);
-        y+=10;
+    let rows="";
+    data.forEach((r,i)=>{
+        rows+=`
+        <tr>
+            <td>${r.name}</td>
+            <td>${r.account}</td>
+            <td>${r.score}</td>
+            <td>${r.time}s</td>
+            <td><button onclick="viewDetail(${i})">Ver</button></td>
+        </tr>`;
     });
 
-    doc.save("resultado_examen.pdf");
+    document.body.innerHTML=`
+    <div class="panel">
+        <h1>Panel de Maestro</h1>
+        <button onclick="location.reload()">Volver</button>
+        <button onclick="clearData()">Borrar todo</button>
+
+        <table border="1">
+            <tr>
+                <th>Nombre</th>
+                <th>Cuenta</th>
+                <th>Calificación</th>
+                <th>Tiempo</th>
+                <th>Acción</th>
+            </tr>
+            ${rows}
+        </table>
+    </div>`;
+}
+
+function viewDetail(i){
+    let data = JSON.parse(localStorage.getItem("results"));
+    let r = data[i];
+
+    alert(JSON.stringify(r,null,2));
+}
+
+function clearData(){
+    localStorage.removeItem("results");
+    alert("Datos borrados");
+    location.reload();
 }
 </script>
 
