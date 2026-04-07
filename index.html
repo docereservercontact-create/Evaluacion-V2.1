@@ -26,9 +26,11 @@ button { padding:10px; margin:5px; cursor:pointer; }
 .left { width:50%; background:#0a3d91; color:white; padding:40px; }
 .right { width:50%; padding:40px; display:flex; flex-direction:column; justify-content:space-between; }
 
-.correct { background:#c8f7c5; }
-.incorrect { background:#f7c5c5; }
-.unanswered { background:#e0e0e0; }
+.alert {
+    color:red;
+    font-size:22px;
+    font-weight:bold;
+}
 </style>
 </head>
 
@@ -69,26 +71,20 @@ let totalTime = questions.length*65;
 let time = totalTime;
 
 let answersUser = new Array(questions.length).fill(null);
-let timePerQuestion = new Array(questions.length).fill(0);
-let lastTime = totalTime;
 
 /* 🚫 DETECCIÓN DE TRAMPAS */
-let cheating = {
-    tabSwitch: false,
-    copyAttempt: false
-};
+let cheatingDetected = false;
 
 document.addEventListener("keydown", e=>{
     if(e.ctrlKey && ["c","v","x"].includes(e.key)){
         e.preventDefault();
-        cheating.copyAttempt = true;
+        cheatingDetected = true;
     }
 });
 
 document.addEventListener("visibilitychange", ()=>{
     if(document.hidden){
-        cheating.tabSwitch = true;
-        alert("Saliste del examen");
+        cheatingDetected = true;
         endExam();
     }
 });
@@ -129,31 +125,32 @@ function updateTimer(){
 }
 
 function nextQuestion(){
-    timePerQuestion[current]+= (lastTime-time);
-    lastTime=time;
-
     if(current<questions.length-1){
         current++;
         loadQuestion();
     } else endExam();
 }
 
+/* FINALIZAR */
 function endExam(){
     clearInterval(interval);
 
     let correct=0;
+
     questions.forEach((q,i)=>{
         if(answersUser[i]===q.correct) correct++;
     });
 
     let totalUsed = totalTime-time;
 
+    let finalScore = cheatingDetected ? 0 : correct;
+
     let result = {
         name,
         account,
-        score: correct+"/"+questions.length,
+        score: finalScore+"/"+questions.length,
         time: totalUsed,
-        cheating
+        cheating: cheatingDetected
     };
 
     let data = JSON.parse(localStorage.getItem("results")||"[]");
@@ -165,16 +162,20 @@ function endExam(){
 
 /* RESULTADOS */
 function showResults(r){
+
+    let cheatingMessage = r.cheating 
+        ? `<p class="alert">⛔ Reprobado por intento de hacer trampa</p>` 
+        : "";
+
     document.body.innerHTML=`
     <div style="padding:30px;">
         <h1>Resultados</h1>
-        <p>${r.name} - ${r.account}</p>
-        <p>Calificación: ${r.score}</p>
-        <p>Tiempo: ${r.time}s</p>
 
-        <p><b>Intentos de trampa:</b></p>
-        <p>Cambio de pestaña: ${r.cheating.tabSwitch ? "Sí" : "No"}</p>
-        <p>Copiar/Pegar: ${r.cheating.copyAttempt ? "Sí" : "No"}</p>
+        ${cheatingMessage}
+
+        <p><b>${r.name}</b> - ${r.account}</p>
+        <p>Calificación: ${r.score}</p>
+        <p>Tiempo total: ${r.time}s</p>
 
         <button onclick="downloadPDF()">Descargar PDF</button>
     </div>`;
@@ -193,8 +194,9 @@ function downloadPDF(){
     doc.text(`Calificación: ${r.score}`,10,40);
     doc.text(`Tiempo: ${r.time}s`,10,50);
 
-    doc.text(`Cambio pestaña: ${r.cheating.tabSwitch?"SI":"NO"}`,10,60);
-    doc.text(`Copiar: ${r.cheating.copyAttempt?"SI":"NO"}`,10,70);
+    if(r.cheating){
+        doc.text("REPROBADO POR INTENTO DE TRAMPA",10,60);
+    }
 
     doc.save("resultado.pdf");
 }
@@ -202,7 +204,7 @@ function downloadPDF(){
 /* PANEL */
 function askPassword(){
     let pass = prompt("Contraseña:");
-    if(pass===PASSWORD) openPanel();
+    if(pass==="9907") openPanel();
     else alert("Incorrecta");
 }
 
@@ -210,14 +212,14 @@ function openPanel(){
     let data = JSON.parse(localStorage.getItem("results")||"[]");
 
     let rows="";
-    data.forEach((r,i)=>{
+    data.forEach(r=>{
         rows+=`
         <tr>
             <td>${r.name}</td>
             <td>${r.account}</td>
             <td>${r.score}</td>
             <td>${r.time}s</td>
-            <td>${r.cheating.tabSwitch?"⚠️":""} ${r.cheating.copyAttempt?"📋":""}</td>
+            <td>${r.cheating ? "⛔ Trampa" : "OK"}</td>
         </tr>`;
     });
 
@@ -232,7 +234,7 @@ function openPanel(){
                 <th>Cuenta</th>
                 <th>Calificación</th>
                 <th>Tiempo</th>
-                <th>Trampas</th>
+                <th>Estado</th>
             </tr>
             ${rows}
         </table>
