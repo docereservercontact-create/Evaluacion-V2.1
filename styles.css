@@ -1,0 +1,40 @@
+body {
+    font-family: Arial;
+    margin: 0;
+}
+
+.center {
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    background:#0a3d91;
+    color:white;
+}
+
+input, button {
+    margin:10px;
+    padding:10px;
+}
+
+.exam {
+    display:flex;
+    height:100vh;
+}
+
+.left {
+    width:50%;
+    background:#0a3d91;
+    color:white;
+    padding:40px;
+}
+
+.right {
+    width:50%;
+    padding:40px;
+}
+
+.correct { background:#c8f7c5; }
+.incorrect { background:#f7c5c5; }
+.unanswered { background:#e0e0e0; }
