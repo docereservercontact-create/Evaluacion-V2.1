@@ -2,213 +2,26 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Examen PRO + Panel</title>
+<title>DOCÉRE</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css">
 
-<style>
-body { font-family:Arial; margin:0; }
-
-/* LOGIN */
-.login {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    height:100vh;
-    background:#0a3d91;
-    color:white;
-}
-
-input { margin:10px; padding:10px; }
-
-button { padding:10px; margin:5px; cursor:pointer; }
-
-/* EXAMEN */
-.exam { display:flex; height:100vh; }
-.left { width:50%; background:#0a3d91; color:white; padding:40px; }
-.right { width:50%; padding:40px; display:flex; flex-direction:column; justify-content:space-between; }
-
-/* RESULTADOS */
-.correct { background:#c8f7c5; }
-.incorrect { background:#f7c5c5; }
-.unanswered { background:#e0e0e0; }
-
-/* PANEL */
-.panel { padding:30px; }
-</style>
+<script src="exams/examen1.js"></script>
+<script src="app.js" defer></script>
 </head>
 
-<body oncontextmenu="return false">
+<body>
 
-<div class="login" id="login">
-    <h1>EXAMEN DE PRUEBA 1</h1>
-    <input id="name" placeholder="Nombre completo">
-    <input id="account" placeholder="No. Cuenta">
-    <button onclick="startExam()">Iniciar Examen</button>
-    <button onclick="openPanel()">Panel Maestro</button>
+<div class="center" id="login">
+    <h1>DOCÉRE</h1>
+
+    <input id="user" placeholder="No. Cuenta">
+    <input id="pass" type="password" placeholder="Contraseña">
+
+    <button onclick="login()">Entrar</button>
+    <button onclick="register()">Registrar alumno</button>
+    <button onclick="teacherLogin()">Panel Maestro</button>
 </div>
-
-<div class="exam" id="exam" style="display:none;">
-    <div class="left"><h2 id="question"></h2></div>
-    <div class="right">
-        <div id="timer"></div>
-        <div id="answers"></div>
-        <button onclick="nextQuestion()">Siguiente</button>
-    </div>
-</div>
-
-<script>
-const { jsPDF } = window.jspdf;
-
-const questions = [
-    { question:"2+2", options:["3","4","5","6"], correct:1 },
-    { question:"Capital de México", options:["GDL","CDMX","MTY","PUE"], correct:1 },
-    { question:"5x3", options:["15","10","20","8"], correct:0 }
-];
-
-let name="", account="";
-let current=0, interval;
-let totalTime = questions.length*65;
-let time = totalTime;
-
-let answersUser = new Array(questions.length).fill(null);
-let timePerQuestion = new Array(questions.length).fill(0);
-let lastTime = totalTime;
-
-/* BLOQUEOS */
-document.addEventListener("keydown", e=>{
-    if(e.ctrlKey && ["c","v","x"].includes(e.key)) e.preventDefault();
-});
-
-document.addEventListener("visibilitychange", ()=>{
-    if(document.hidden){
-        alert("Saliste del examen");
-        endExam();
-    }
-});
-
-function startExam(){
-    name.value ? name=name.value : name=document.getElementById("name").value;
-    account=document.getElementById("account").value;
-
-    if(!name || !account) return alert("Completa datos");
-
-    login.style.display="none";
-    exam.style.display="flex";
-
-    loadQuestion();
-    interval=setInterval(updateTimer,1000);
-}
-
-function loadQuestion(){
-    let q=questions[current];
-    question.textContent=q.question;
-
-    answers.innerHTML="";
-    q.options.forEach((opt,i)=>{
-        let btn=document.createElement("button");
-        btn.textContent=opt;
-
-        btn.onclick=()=>{
-            answersUser[current]=i;
-        };
-
-        answers.appendChild(btn);
-    });
-}
-
-function updateTimer(){
-    timer.textContent=time+"s";
-    if(time<=0) endExam();
-    time--;
-}
-
-function nextQuestion(){
-    timePerQuestion[current]+= (lastTime-time);
-    lastTime=time;
-
-    if(current<questions.length-1){
-        current++;
-        loadQuestion();
-    } else endExam();
-}
-
-function endExam(){
-    clearInterval(interval);
-
-    let correct=0;
-
-    questions.forEach((q,i)=>{
-        if(answersUser[i]===q.correct) correct++;
-    });
-
-    let totalUsed = totalTime-time;
-
-    let result = {
-        name,
-        account,
-        score: correct+"/"+questions.length,
-        time: totalUsed,
-        detail: answersUser
-    };
-
-    let data = JSON.parse(localStorage.getItem("results") || "[]");
-    data.push(result);
-    localStorage.setItem("results", JSON.stringify(data));
-
-    alert("Examen terminado. Guardado en panel.");
-    location.reload();
-}
-
-/* PANEL */
-function openPanel(){
-    let data = JSON.parse(localStorage.getItem("results") || "[]");
-
-    let rows="";
-    data.forEach((r,i)=>{
-        rows+=`
-        <tr>
-            <td>${r.name}</td>
-            <td>${r.account}</td>
-            <td>${r.score}</td>
-            <td>${r.time}s</td>
-            <td><button onclick="viewDetail(${i})">Ver</button></td>
-        </tr>`;
-    });
-
-    document.body.innerHTML=`
-    <div class="panel">
-        <h1>Panel de Maestro</h1>
-        <button onclick="location.reload()">Volver</button>
-        <button onclick="clearData()">Borrar todo</button>
-
-        <table border="1">
-            <tr>
-                <th>Nombre</th>
-                <th>Cuenta</th>
-                <th>Calificación</th>
-                <th>Tiempo</th>
-                <th>Acción</th>
-            </tr>
-            ${rows}
-        </table>
-    </div>`;
-}
-
-function viewDetail(i){
-    let data = JSON.parse(localStorage.getItem("results"));
-    let r = data[i];
-
-    alert(JSON.stringify(r,null,2));
-}
-
-function clearData(){
-    localStorage.removeItem("results");
-    alert("Datos borrados");
-    location.reload();
-}
-</script>
 
 </body>
 </html>
